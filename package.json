@@ -1,0 +1,23 @@
+{
+  "name": "bond-investment-platform",
+  "version": "1.0.0",
+  "description": "Blockchain-based government bond investment platform",
+  "main": "frontend/app.js",
+  "scripts": {
+    "start": "python -m http.server 8080 -d frontend"
+  },
+  "dependencies": {
+    "web3": "^4.2.0",
+    "chart.js": "^4.4.0"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "blockchain",
+    "defi",
+    "bonds",
+    "investment"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+
