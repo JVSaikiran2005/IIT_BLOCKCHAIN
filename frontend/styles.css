@@ -95,6 +95,24 @@ body {
     color: var(--text-primary);
 }
 
+.user-info {
+    padding: 0.5rem 1rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+#authSection {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#loginSection {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 /* Buttons */
 .btn {
     padding: 0.625rem 1.25rem;
@@ -494,6 +512,16 @@ body {
     color: var(--text-secondary);
 }
 
+.error-message {
+    background-color: #fee2e2;
+    color: var(--danger-color);
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    border: 1px solid #fecaca;
+}
+
 /* Loading Overlay */
 .loading-overlay {
     position: fixed;
@@ -561,4 +589,5 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
 

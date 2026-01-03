@@ -4,7 +4,8 @@ Business logic services for the Bond Investment Platform
 
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
-from models import Bond, Investment, YieldCalculation
+from models import Bond, Investment, YieldCalculation, User
+from passlib.context import CryptContext
 
 
 class BondService:
@@ -97,4 +98,72 @@ class YieldCalculator:
             result.investorAccruedInterest = investor_accrued
         
         return result
+
+
+class UserService:
+    """Service for managing users and authentication"""
+    
+    def __init__(self):
+        self.users: Dict[int, User] = {}
+        self.users_by_email: Dict[str, User] = {}
+        self.users_by_username: Dict[str, User] = {}
+        self.next_user_id = 1
+        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    
+    def hash_password(self, password: str) -> str:
+        """Hash a password"""
+        return self.pwd_context.hash(password)
+    
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """Verify a password against its hash"""
+        return self.pwd_context.verify(plain_password, hashed_password)
+    
+    def create_user(self, email: str, username: str, password: str) -> User:
+        """Create a new user"""
+        # Check if email already exists
+        if email.lower() in self.users_by_email:
+            raise ValueError("Email already registered")
+        
+        # Check if username already exists
+        if username.lower() in self.users_by_username:
+            raise ValueError("Username already taken")
+        
+        # Create user
+        user_id = self.next_user_id
+        self.next_user_id += 1
+        
+        hashed_password = self.hash_password(password)
+        user = User(
+            id=user_id,
+            email=email.lower(),
+            username=username,
+            hashed_password=hashed_password,
+            created_at=datetime.now().isoformat()
+        )
+        
+        self.users[user_id] = user
+        self.users_by_email[email.lower()] = user
+        self.users_by_username[username.lower()] = user
+        
+        return user
+    
+    def get_user_by_email(self, email: str) -> Optional[User]:
+        """Get user by email"""
+        return self.users_by_email.get(email.lower())
+    
+    def get_user_by_id(self, user_id: int) -> Optional[User]:
+        """Get user by ID"""
+        return self.users.get(user_id)
+    
+    def authenticate_user(self, email: str, password: str) -> Optional[User]:
+        """Authenticate a user"""
+        user = self.get_user_by_email(email)
+        if not user:
+            return None
+        
+        if not self.verify_password(password, user.hashed_password):
+            return None
+        
+        return user
+
 

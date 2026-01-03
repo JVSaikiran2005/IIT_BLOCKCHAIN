@@ -4,4 +4,7 @@ msgspec
 requests
 eth-abi
 python-dotenv
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
 

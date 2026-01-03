@@ -1,13 +1,13 @@
 """
 Data models for the Bond Investment Platform
-Using msgspec for data validation (Python 3.13.7 compatible)
+Using Pydantic for FastAPI compatibility and data validation
 """
 
-import msgspec
+from pydantic import BaseModel
 from typing import List, Optional
 
 
-class Bond(msgspec.Struct):
+class Bond(BaseModel):
     """Bond model"""
     id: int
     name: str
@@ -21,7 +21,7 @@ class Bond(msgspec.Struct):
     bondTokenAddress: str
 
 
-class Investment(msgspec.Struct):
+class Investment(BaseModel):
     """Investment model"""
     bondId: int
     investorAddress: str
@@ -30,7 +30,7 @@ class Investment(msgspec.Struct):
     transactionHash: Optional[str] = None
 
 
-class Portfolio(msgspec.Struct):
+class Portfolio(BaseModel):
     """Portfolio model"""
     address: str
     investments: List[Investment]
@@ -39,7 +39,7 @@ class Portfolio(msgspec.Struct):
     totalYield: float
 
 
-class YieldCalculation(msgspec.Struct):
+class YieldCalculation(BaseModel):
     """Yield calculation model"""
     bondId: int
     couponRate: float  # Annual rate in percentage
@@ -49,4 +49,34 @@ class YieldCalculation(msgspec.Struct):
     daysToMaturity: int
     investorYield: Optional[float] = None  # Yield for specific investor
     investorAccruedInterest: Optional[float] = None
+
+
+class User(BaseModel):
+    """User model"""
+    id: int
+    email: str
+    username: str
+    hashed_password: str
+    created_at: Optional[str] = None
+
+
+class UserRegister(BaseModel):
+    """User registration model"""
+    email: str
+    username: str
+    password: str
+
+
+class UserLogin(BaseModel):
+    """User login model"""
+    email: str
+    password: str
+
+
+class Token(BaseModel):
+    """Token response model"""
+    access_token: str
+    token_type: str
+    user_id: int
+    username: str
 

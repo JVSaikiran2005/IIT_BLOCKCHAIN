@@ -3,18 +3,19 @@ FastAPI Backend for Bond Investment Platform
 Manages bond metadata, yield calculations, and user investment records
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer
 from typing import List, Optional
 from datetime import datetime, timedelta
 import json
 import os
-import msgspec
 from dotenv import load_dotenv
 
-from models import Bond, Investment, Portfolio, YieldCalculation
-from services import BondService, InvestmentService, YieldCalculator
+from models import Bond, Investment, Portfolio, YieldCalculation, UserRegister, UserLogin, Token, User
+from services import BondService, InvestmentService, YieldCalculator, UserService
+from auth import create_access_token, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES, set_user_service
 
 load_dotenv()
 
@@ -33,6 +34,10 @@ app.add_middleware(
 bond_service = BondService()
 investment_service = InvestmentService()
 yield_calculator = YieldCalculator()
+user_service = UserService()
+
+# Initialize auth with user service
+set_user_service(user_service)
 
 # Sample bonds data (in production, this would come from a database)
 SAMPLE_BONDS = [
@@ -76,7 +81,7 @@ SAMPLE_BONDS = [
 
 # Initialize sample bonds
 for bond_data in SAMPLE_BONDS:
-    bond = msgspec.convert(bond_data, Bond)
+    bond = Bond(**bond_data)
     bond_service.add_bond(bond)
 
 
@@ -87,6 +92,9 @@ async def root():
         "message": "Bond Investment Platform API",
         "version": "1.0.0",
         "endpoints": {
+            "register": "/api/auth/register",
+            "login": "/api/auth/login",
+            "me": "/api/auth/me",
             "bonds": "/api/bonds",
             "bond_details": "/api/bonds/{bond_id}",
             "invest": "/api/invest",
@@ -96,12 +104,85 @@ async def root():
     }
 
 
+@app.post("/api/auth/register", response_model=Token)
+async def register(user_data: UserRegister):
+    """Register a new user"""
+    try:
+        user = user_service.create_user(
+            email=user_data.email,
+            username=user_data.username,
+            password=user_data.password
+        )
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.id, "username": user.username},
+            expires_delta=access_token_expires
+        )
+        
+        return Token(
+            access_token=access_token,
+            token_type="bearer",
+            user_id=user.id,
+            username=user.username
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration failed: {str(e)}"
+        )
+
+
+@app.post("/api/auth/login", response_model=Token)
+async def login(user_data: UserLogin):
+    """Login user"""
+    user = user_service.authenticate_user(user_data.email, user_data.password)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Create access token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.id, "username": user.username},
+        expires_delta=access_token_expires
+    )
+    
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        user_id=user.id,
+        username=user.username
+    )
+
+
+@app.get("/api/auth/me")
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """Get current user information"""
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "username": current_user.username,
+        "created_at": current_user.created_at
+    }
+
+
 @app.get("/api/bonds")
 async def get_bonds():
     """Get all available bonds"""
     bonds = bond_service.get_all_bonds()
-    # Convert msgspec.Struct to dict for JSON serialization
-    return [msgspec.to_builtins(bond) for bond in bonds]
+    # Convert Pydantic models to dict for JSON serialization
+    return [bond.model_dump() for bond in bonds]
 
 
 @app.get("/api/bonds/{bond_id}")
@@ -110,15 +191,15 @@ async def get_bond(bond_id: int):
     bond = bond_service.get_bond(bond_id)
     if not bond:
         raise HTTPException(status_code=404, detail="Bond not found")
-    return msgspec.to_builtins(bond)
+    return bond.model_dump()
 
 
 @app.post("/api/invest")
-async def record_investment(investment_data: dict):
+async def record_investment(investment_data: Investment, current_user: User = Depends(get_current_user)):
     """Record an investment transaction"""
     try:
-        # Decode investment from JSON using msgspec
-        investment = msgspec.convert(investment_data, Investment)
+        # Decode investment from JSON
+        investment = investment_data
         
         # Validate bond exists
         bond = bond_service.get_bond(investment.bondId)
@@ -138,10 +219,8 @@ async def record_investment(investment_data: dict):
         return {
             "success": True,
             "message": "Investment recorded successfully",
-            "investment": msgspec.to_builtins(investment)
+            "investment": investment.model_dump()
         }
-    except msgspec.ValidationError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid investment data: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -163,7 +242,7 @@ async def get_portfolio(address: str):
         totalYield=0  # Calculate from individual bond yields
     )
     
-    return msgspec.to_builtins(portfolio)
+    return portfolio.model_dump()
 
 
 @app.get("/api/yield/{bond_id}")
@@ -176,7 +255,7 @@ async def calculate_yield(bond_id: int, address: Optional[str] = None):
     # Calculate yield
     yield_data = yield_calculator.calculate_yield(bond, address)
     
-    return msgspec.to_builtins(yield_data)
+    return yield_data.model_dump()
 
 
 @app.get("/api/bonds/{bond_id}/stats")

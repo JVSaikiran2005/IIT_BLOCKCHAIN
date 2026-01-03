@@ -19,6 +19,14 @@
                     <a href="#about" class="nav-link">About</a>
                 </nav>
                 <div class="wallet-section">
+                    <div id="authSection" style="display: none;">
+                        <span id="userInfo" class="user-info"></span>
+                        <button id="logoutBtn" class="btn btn-secondary btn-small">Logout</button>
+                    </div>
+                    <div id="loginSection">
+                        <button id="loginBtn" class="btn btn-secondary">Login</button>
+                        <button id="registerBtn" class="btn btn-primary">Register</button>
+                    </div>
                     <button id="connectWalletBtn" class="btn btn-primary">Connect Wallet</button>
                     <div id="walletInfo" class="wallet-info" style="display: none;">
                         <span id="walletAddress"></span>
@@ -129,10 +137,69 @@
         </div>
     </footer>
 
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="loginModal">&times;</span>
+            <h2>Login</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary btn-block">Login</button>
+                </div>
+                <div class="form-group" style="text-align: center; margin-top: 1rem;">
+                    <p>Don't have an account? <a href="#" id="switchToRegister" style="color: #2563eb; cursor: pointer;">Register here</a></p>
+                </div>
+                <div id="loginError" class="error-message" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="registerModal">&times;</span>
+            <h2>Register</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <input type="email" id="registerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerUsername">Username</label>
+                    <input type="text" id="registerUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <input type="password" id="registerPassword" required minlength="6">
+                    <small class="form-help">Minimum 6 characters</small>
+                </div>
+                <div class="form-group">
+                    <label for="registerPasswordConfirm">Confirm Password</label>
+                    <input type="password" id="registerPasswordConfirm" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary btn-block">Register</button>
+                </div>
+                <div class="form-group" style="text-align: center; margin-top: 1rem;">
+                    <p>Already have an account? <a href="#" id="switchToLogin" style="color: #2563eb; cursor: pointer;">Login here</a></p>
+                </div>
+                <div id="registerError" class="error-message" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+
     <!-- Investment Modal -->
     <div id="investmentModal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
+            <span class="close" data-modal="investmentModal">&times;</span>
             <h2>Invest in Bond</h2>
             <div id="bondDetails" class="bond-details-modal"></div>
             <form id="investmentForm">
@@ -155,8 +222,10 @@
     </div>
 
     <!-- Scripts -->
+    <script src="auth.js"></script>
     <script src="wallet.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
+
 

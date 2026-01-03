@@ -11,6 +11,7 @@ let yieldChart = null;
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
     loadBonds();
+    loadPortfolio();
     setupModal();
     setupInvestmentForm();
     
@@ -167,6 +168,23 @@ function setupInvestmentForm() {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        // Check if user is logged in (auth.js exposes isAuthenticated)
+        if (typeof isAuthenticated === 'function') {
+            if (!isAuthenticated()) {
+                alert('Please log in first before investing in bonds');
+                return;
+            }
+        } else if (window.authManager && typeof window.authManager.isAuthenticated === 'function') {
+            if (!window.authManager.isAuthenticated()) {
+                alert('Please log in first before investing in bonds');
+                return;
+            }
+        } else {
+            // Fallback: if auth functions are not available, block investment for safety
+            alert('Authentication module not loaded. Please log in to continue.');
+            return;
+        }
+        
         if (!walletManager.isWalletConnected()) {
             alert('Please connect your wallet first');
             return;
@@ -190,7 +208,8 @@ function setupInvestmentForm() {
             const response = await fetch(`${API_BASE_URL}/invest`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${getAuthToken()}`
                 },
                 body: JSON.stringify({
                     bondId: currentBondId,
@@ -416,4 +435,5 @@ if (typeof walletManager !== 'undefined') {
         }
     }, 500);
 }
+
 
