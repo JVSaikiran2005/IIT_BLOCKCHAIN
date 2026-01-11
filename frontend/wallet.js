@@ -18,6 +18,31 @@ class WalletManager {
             address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
             balance: 10000 // Simulated balance in USD
         };
+        
+        // Initialize
+        this.initialize();
+    }
+    
+    /**
+     * Initialize wallet manager
+     */
+    initialize() {
+        if (this.hasMetaMask) {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                if (accounts.length > 0) {
+                    this.address = accounts[0];
+                    this.updateUI();
+                    console.log('Account changed:', this.address);
+                } else {
+                    this.disconnect();
+                }
+            });
+            
+            window.ethereum.on('chainChanged', () => {
+                console.log('Network changed');
+                window.location.reload();
+            });
+        }
     }
     
     /**
@@ -25,37 +50,53 @@ class WalletManager {
      */
     async connect() {
         try {
+            // Require user to be logged in before allowing wallet connection
+            if (window.authManager && typeof window.authManager.isAuthenticated === 'function') {
+                if (!window.authManager.isAuthenticated()) {
+                    alert('Please log in to connect your wallet');
+                    if (typeof openModal === 'function') openModal('loginModal');
+                    return null;
+                }
+            }
+
             if (this.hasMetaMask) {
                 // Connect to MetaMask
+                console.log('Attempting to connect MetaMask...');
                 const accounts = await window.ethereum.request({
                     method: 'eth_requestAccounts'
                 });
                 
-                if (accounts.length > 0) {
+                if (accounts && accounts.length > 0) {
                     this.address = accounts[0];
                     this.isConnected = true;
                     this.provider = window.ethereum;
-                    
-                    // Listen for account changes
-                    window.ethereum.on('accountsChanged', (accounts) => {
-                        if (accounts.length > 0) {
-                            this.address = accounts[0];
-                            this.updateUI();
-                        } else {
-                            this.disconnect();
-                        }
-                    });
-                    
+                    console.log('MetaMask connected successfully:', this.address);
                     return this.address;
                 }
             } else {
-                // Use simulated wallet for demo
+                // Use simulated wallet for demo (only if logged in)
+                console.log('MetaMask not found. Using simulated wallet.');
                 this.address = this.simulatedWallet.address;
                 this.isConnected = true;
+                console.log('Simulated wallet connected:', this.address);
                 return this.address;
             }
         } catch (error) {
             console.error('Error connecting wallet:', error);
+            // Fallback to simulated wallet
+            if (error.code === -32002) {
+                alert('MetaMask is already pending a connection request. Please check your MetaMask extension.');
+            } else if (error.code === 4001) {
+                alert('You rejected the connection request.');
+            } else if (error.message && error.message.includes('User denied')) {
+                alert('You rejected the connection request.');
+            } else {
+                alert('Could not connect MetaMask. Using simulated wallet instead.');
+                this.address = this.simulatedWallet.address;
+                this.isConnected = true;
+                console.log('Fallback to simulated wallet');
+                return this.address;
+            }
             throw error;
         }
     }
@@ -68,6 +109,7 @@ class WalletManager {
         this.isConnected = false;
         this.provider = null;
         this.signer = null;
+        console.log('Wallet disconnected');
     }
     
     /**
@@ -100,13 +142,13 @@ class WalletManager {
         const walletInfo = document.getElementById('walletInfo');
         const walletAddress = document.getElementById('walletAddress');
         
-        if (this.isConnected) {
-            connectBtn.style.display = 'none';
-            walletInfo.style.display = 'flex';
-            walletAddress.textContent = this.formatAddress(this.address);
+        if (this.isConnected && this.address) {
+            if (connectBtn) connectBtn.style.display = 'none';
+            if (walletInfo) walletInfo.style.display = 'flex';
+            if (walletAddress) walletAddress.textContent = this.formatAddress(this.address);
         } else {
-            connectBtn.style.display = 'block';
-            walletInfo.style.display = 'none';
+            if (connectBtn) connectBtn.style.display = 'block';
+            if (walletInfo) walletInfo.style.display = 'none';
         }
     }
     
@@ -137,15 +179,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (connectBtn) {
         connectBtn.addEventListener('click', async () => {
             try {
-                await walletManager.connect();
+                connectBtn.disabled = true;
+                connectBtn.textContent = 'Connecting...';
+                const address = await walletManager.connect();
                 walletManager.updateUI();
                 
                 // Refresh portfolio if on portfolio section
                 if (typeof loadPortfolio === 'function') {
                     loadPortfolio();
                 }
+                console.log('Wallet connected:', address);
             } catch (error) {
-                alert('Failed to connect wallet: ' + error.message);
+                console.error('Wallet connection failed:', error);
+            } finally {
+                connectBtn.disabled = false;
+                connectBtn.textContent = 'Connect Wallet';
             }
         });
     }
@@ -159,8 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof loadPortfolio === 'function') {
                 loadPortfolio();
             }
+            console.log('Wallet disconnected');
         });
     }
 });
+
 
 

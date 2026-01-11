@@ -3,6 +3,9 @@
  * Handles user registration, login, and token management
  */
 
+// API Configuration
+const API_BASE_URL = 'http://localhost:8000/api';
+
 // Token storage key
 const TOKEN_KEY = 'bond_platform_token';
 const USER_KEY = 'bond_platform_user';
@@ -130,9 +133,19 @@ function setupLoginForm() {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const email = document.getElementById('loginEmail').value;
+        const email = document.getElementById('loginEmail').value.trim();
         const password = document.getElementById('loginPassword').value;
         const errorDiv = document.getElementById('loginError');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        
+        // Validate inputs
+        if (!email || !password) {
+            if (errorDiv) {
+                errorDiv.textContent = 'Please enter email and password';
+                errorDiv.style.display = 'block';
+            }
+            return;
+        }
         
         // Clear previous errors
         if (errorDiv) {
@@ -141,6 +154,11 @@ function setupLoginForm() {
         }
         
         try {
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Logging in...';
+            }
+            
             const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
@@ -152,28 +170,42 @@ function setupLoginForm() {
                 })
             });
             
+            const data = await response.json();
+            
             if (response.ok) {
-                const data = await response.json();
                 saveAuthState(data.access_token, {
                     id: data.user_id,
-                    username: data.username
+                    username: data.username,
+                    email: email
                 });
                 
                 closeModal('loginModal');
                 form.reset();
-                alert('Login successful!');
+                console.log('Login successful! Welcome ' + data.username);
+                
+                // Show success and reload page
+                setTimeout(() => {
+                    alert('Login successful! Welcome ' + data.username);
+                    window.location.reload();
+                }, 500);
             } else {
-                const error = await response.json();
+                const errorMsg = data.detail || 'Login failed. Please check your credentials.';
                 if (errorDiv) {
-                    errorDiv.textContent = error.detail || 'Login failed';
+                    errorDiv.textContent = errorMsg;
                     errorDiv.style.display = 'block';
                 }
+                console.error('Login error:', errorMsg);
             }
         } catch (error) {
             console.error('Login error:', error);
             if (errorDiv) {
-                errorDiv.textContent = 'Failed to connect to server';
+                errorDiv.textContent = 'Failed to connect to server. Make sure the backend is running.';
                 errorDiv.style.display = 'block';
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Login';
             }
         }
     });
@@ -189,16 +221,30 @@ function setupRegisterForm() {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const email = document.getElementById('registerEmail').value;
-        const username = document.getElementById('registerUsername').value;
+        const email = document.getElementById('registerEmail').value.trim();
+        const username = document.getElementById('registerUsername').value.trim();
         const password = document.getElementById('registerPassword').value;
         const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
         const errorDiv = document.getElementById('registerError');
+        const submitBtn = form.querySelector('button[type="submit"]');
         
-        // Clear previous errors
-        if (errorDiv) {
-            errorDiv.style.display = 'none';
-            errorDiv.textContent = '';
+        // Validate inputs
+        if (!email || !username || !password || !passwordConfirm) {
+            if (errorDiv) {
+                errorDiv.textContent = 'Please fill in all fields';
+                errorDiv.style.display = 'block';
+            }
+            return;
+        }
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            if (errorDiv) {
+                errorDiv.textContent = 'Please enter a valid email address';
+                errorDiv.style.display = 'block';
+            }
+            return;
         }
         
         // Validate passwords match
@@ -219,7 +265,27 @@ function setupRegisterForm() {
             return;
         }
         
+        // Validate username length
+        if (username.length < 3) {
+            if (errorDiv) {
+                errorDiv.textContent = 'Username must be at least 3 characters';
+                errorDiv.style.display = 'block';
+            }
+            return;
+        }
+        
+        // Clear previous errors
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+        }
+        
         try {
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Registering...';
+            }
+            
             const response = await fetch(`${API_BASE_URL}/auth/register`, {
                 method: 'POST',
                 headers: {
@@ -232,28 +298,42 @@ function setupRegisterForm() {
                 })
             });
             
+            const data = await response.json();
+            
             if (response.ok) {
-                const data = await response.json();
                 saveAuthState(data.access_token, {
                     id: data.user_id,
-                    username: data.username
+                    username: data.username,
+                    email: email
                 });
                 
                 closeModal('registerModal');
                 form.reset();
-                alert('Registration successful!');
+                console.log('Registration successful! Welcome ' + data.username);
+                
+                // Show success and reload page
+                setTimeout(() => {
+                    alert('Registration successful! Welcome ' + data.username);
+                    window.location.reload();
+                }, 500);
             } else {
-                const error = await response.json();
+                const errorMsg = data.detail || 'Registration failed. Please try again.';
                 if (errorDiv) {
-                    errorDiv.textContent = error.detail || 'Registration failed';
+                    errorDiv.textContent = errorMsg;
                     errorDiv.style.display = 'block';
                 }
+                console.error('Registration error:', errorMsg);
             }
         } catch (error) {
             console.error('Registration error:', error);
             if (errorDiv) {
-                errorDiv.textContent = 'Failed to connect to server';
+                errorDiv.textContent = 'Failed to connect to server. Make sure the backend is running.';
                 errorDiv.style.display = 'block';
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Register';
             }
         }
     });

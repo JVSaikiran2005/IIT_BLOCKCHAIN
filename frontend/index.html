@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bond Investment Platform - Tokenized Government Bonds</title>
+    <title>Government Bonds Investment Platform</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <!-- Header -->
     <header class="header">
         <div class="container">
             <div class="header-content">
-                <h1 class="logo">📈 Bond Platform</h1>
+                <h1 class="logo">🏛️ Gov Bonds</h1>
                 <nav class="nav">
-                    <a href="#bonds" class="nav-link">Browse Bonds</a>
-                    <a href="#portfolio" class="nav-link">My Portfolio</a>
-                    <a href="#about" class="nav-link">About</a>
+                    <a href="#bonds" class="nav-link">Bonds</a>
+                    <a href="#statistics" class="nav-link">Statistics</a>
+                    <a href="#portfolio" class="nav-link">Portfolio</a>
                 </nav>
                 <div class="wallet-section">
                     <div id="authSection" style="display: none;">
@@ -28,7 +27,7 @@
                         <button id="registerBtn" class="btn btn-primary">Register</button>
                     </div>
                     <button id="connectWalletBtn" class="btn btn-primary">Connect Wallet</button>
-                    <div id="walletInfo" class="wallet-info" style="display: none;">
+                    <div id="walletInfo" style="display: none;">
                         <span id="walletAddress"></span>
                         <button id="disconnectWalletBtn" class="btn btn-secondary btn-small">Disconnect</button>
                     </div>
@@ -37,25 +36,25 @@
         </div>
     </header>
 
-    <!-- Main Content -->
+    <!-- Main -->
     <main class="main">
-        <!-- Hero Section -->
+        <!-- Hero -->
         <section class="hero">
             <div class="container">
-                <h2 class="hero-title">Invest in Government Bonds with Fractional Ownership</h2>
-                <p class="hero-subtitle">Access safe, low-risk investments with minimal capital. Tokenized bonds for everyone.</p>
+                <h2 class="hero-title">Invest in Government Bonds</h2>
+                <p class="hero-subtitle">Secure, low-risk government bond investments with global access</p>
                 <div class="hero-features">
                     <div class="feature">
-                        <span class="feature-icon">💰</span>
-                        <span>Low Minimum Investment</span>
+                        <span class="feature-icon">🔒</span>
+                        <span>Secure</span>
                     </div>
                     <div class="feature">
-                        <span class="feature-icon">🔒</span>
-                        <span>Secure & Transparent</span>
+                        <span class="feature-icon">💰</span>
+                        <span>Low Minimum</span>
                     </div>
                     <div class="feature">
                         <span class="feature-icon">🌍</span>
-                        <span>Global Access</span>
+                        <span>Global Bonds</span>
                     </div>
                 </div>
             </div>
@@ -64,9 +63,36 @@
         <!-- Bonds Section -->
         <section id="bonds" class="section">
             <div class="container">
-                <h2 class="section-title">Available Bonds</h2>
+                <h2 class="section-title">Available Government Bonds</h2>
                 <div id="bondsContainer" class="bonds-grid">
-                    <!-- Bonds will be loaded here -->
+                    <p class="empty-state">Loading bonds...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Statistics Section -->
+        <section id="statistics" class="section section-alt">
+            <div class="container">
+                <h2 class="section-title">📊 Public Government Bonds Investment Overview</h2>
+                <p class="section-subtitle">See how investors are distributing their funds across government bonds</p>
+                <button id="statsModalBtn" class="btn btn-primary">📊 View Detailed Statistics & Charts</button>
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Invested</div>
+                        <div id="platformTotalInvested" class="stat-value">$0.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Active Investors</div>
+                        <div id="platformActiveInvestors" class="stat-value">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Investments</div>
+                        <div id="platformTotalInvestments" class="stat-value">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Available Bonds</div>
+                        <div id="platformAvailableBonds" class="stat-value">0</div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -75,7 +101,7 @@
         <section id="portfolio" class="section">
             <div class="container">
                 <h2 class="section-title">My Portfolio</h2>
-                <div id="portfolioContainer" class="portfolio-container">
+                <div class="portfolio-container">
                     <div class="portfolio-stats">
                         <div class="stat-card">
                             <div class="stat-label">Total Invested</div>
@@ -85,45 +111,9 @@
                             <div class="stat-label">Total Value</div>
                             <div id="totalValue" class="stat-value">$0.00</div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Total Yield</div>
-                            <div id="totalYield" class="stat-value">$0.00</div>
-                        </div>
                     </div>
                     <div id="portfolioInvestments" class="portfolio-investments">
-                        <p class="empty-state">Connect your wallet to view your portfolio</p>
-                    </div>
-                    <div id="portfolioChart" class="chart-container" style="display: none;">
-                        <canvas id="yieldChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- About Section -->
-        <section id="about" class="section section-alt">
-            <div class="container">
-                <h2 class="section-title">How It Works</h2>
-                <div class="how-it-works">
-                    <div class="step">
-                        <div class="step-number">1</div>
-                        <h3>Connect Wallet</h3>
-                        <p>Connect your Web3 wallet (MetaMask or simulated wallet for demo)</p>
-                    </div>
-                    <div class="step">
-                        <div class="step-number">2</div>
-                        <h3>Browse Bonds</h3>
-                        <p>Explore available government bonds from various countries</p>
-                    </div>
-                    <div class="step">
-                        <div class="step-number">3</div>
-                        <h3>Invest</h3>
-                        <p>Invest any amount using stablecoins - no high minimums</p>
-                    </div>
-                    <div class="step">
-                        <div class="step-number">4</div>
-                        <h3>Earn Returns</h3>
-                        <p>Receive periodic interest payments and redeem at maturity</p>
+                        <p class="empty-state">Connect wallet to view portfolio</p>
                     </div>
                 </div>
             </div>
@@ -133,14 +123,14 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2024 Bond Investment Platform. Built for financial inclusion.</p>
+            <p>&copy; 2026 Government Bonds Investment Platform. Invest safely in government bonds.</p>
         </div>
     </footer>
 
     <!-- Login Modal -->
     <div id="loginModal" class="modal">
         <div class="modal-content">
-            <span class="close" data-modal="loginModal">&times;</span>
+            <span class="close">&times;</span>
             <h2>Login</h2>
             <form id="loginForm">
                 <div class="form-group">
@@ -151,13 +141,7 @@
                     <label for="loginPassword">Password</label>
                     <input type="password" id="loginPassword" required>
                 </div>
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary btn-block">Login</button>
-                </div>
-                <div class="form-group" style="text-align: center; margin-top: 1rem;">
-                    <p>Don't have an account? <a href="#" id="switchToRegister" style="color: #2563eb; cursor: pointer;">Register here</a></p>
-                </div>
-                <div id="loginError" class="error-message" style="display: none;"></div>
+                <button type="submit" class="btn btn-primary btn-block">Login</button>
             </form>
         </div>
     </div>
@@ -165,7 +149,7 @@
     <!-- Register Modal -->
     <div id="registerModal" class="modal">
         <div class="modal-content">
-            <span class="close" data-modal="registerModal">&times;</span>
+            <span class="close">&times;</span>
             <h2>Register</h2>
             <form id="registerForm">
                 <div class="form-group">
@@ -185,13 +169,7 @@
                     <label for="registerPasswordConfirm">Confirm Password</label>
                     <input type="password" id="registerPasswordConfirm" required>
                 </div>
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary btn-block">Register</button>
-                </div>
-                <div class="form-group" style="text-align: center; margin-top: 1rem;">
-                    <p>Already have an account? <a href="#" id="switchToLogin" style="color: #2563eb; cursor: pointer;">Login here</a></p>
-                </div>
-                <div id="registerError" class="error-message" style="display: none;"></div>
+                <button type="submit" class="btn btn-primary btn-block">Register</button>
             </form>
         </div>
     </div>
@@ -199,30 +177,68 @@
     <!-- Investment Modal -->
     <div id="investmentModal" class="modal">
         <div class="modal-content">
-            <span class="close" data-modal="investmentModal">&times;</span>
-            <h2>Invest in Bond</h2>
-            <div id="bondDetails" class="bond-details-modal"></div>
+            <span class="close">&times;</span>
+            <h2>Invest in Government Bond</h2>
+            <div id="bondDetails"></div>
             <form id="investmentForm">
                 <div class="form-group">
-                    <label for="investmentAmount">Investment Amount (USD)</label>
+                    <label for="investmentAmount">Investment Amount ($)</label>
                     <input type="number" id="investmentAmount" min="10" step="0.01" required>
-                    <small class="form-help">Minimum investment: $10</small>
                 </div>
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary btn-block">Invest</button>
-                </div>
+                <button type="submit" class="btn btn-primary btn-block">Invest Now</button>
             </form>
         </div>
     </div>
 
     <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div id="loadingOverlay" class="loading-overlay">
         <div class="spinner"></div>
-        <p>Processing transaction...</p>
+        <p>Processing...</p>
+    </div>
+
+    <!-- Statistics Modal -->
+    <div id="statsModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <span class="close">&times;</span>
+            <h2>📊 Government Bonds Investment Overview</h2>
+            <p class="modal-subtitle">Public view of all government bond investments</p>
+            <div class="stats-modal-content">
+                <div class="stats-grid">
+                    <div class="stat-detail-card">
+                        <h3>Total Invested</h3>
+                        <p id="statsDetailTotalInvested" class="stat-detail-value">$0.00</p>
+                    </div>
+                    <div class="stat-detail-card">
+                        <h3>Active Investors</h3>
+                        <p id="statsDetailActiveInvestors" class="stat-detail-value">0</p>
+                    </div>
+                    <div class="stat-detail-card">
+                        <h3>Total Investments</h3>
+                        <p id="statsDetailTotalInvestments" class="stat-detail-value">0</p>
+                    </div>
+                    <div class="stat-detail-card">
+                        <h3>Available Bonds</h3>
+                        <p id="statsDetailAvailableBonds" class="stat-detail-value">0</p>
+                    </div>
+                </div>
+                <div class="chart-section">
+                    <h3>Investment Distribution by Bond 🏛️</h3>
+                    <div class="chart-container">
+                        <canvas id="investmentChart"></canvas>
+                    </div>
+                </div>
+                <div class="bonds-breakdown-section">
+                    <h3>Bond-wise Investment Details 📈</h3>
+                    <div id="bondsBreakdown" class="bonds-breakdown">
+                        <p>Loading bond data...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Scripts -->
-    <script src="auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="wallet.js"></script>
     <script src="app.js"></script>
 </body>

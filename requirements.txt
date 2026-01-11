@@ -6,5 +6,8 @@ eth-abi
 python-dotenv
 python-jose[cryptography]
 passlib[bcrypt]
+# Pin bcrypt to a version compatible with passlib 1.7.x
+bcrypt==4.0.1
 python-multipart
+pydantic
 

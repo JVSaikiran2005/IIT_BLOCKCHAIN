@@ -16,10 +16,14 @@ from dotenv import load_dotenv
 from models import Bond, Investment, Portfolio, YieldCalculation, UserRegister, UserLogin, Token, User
 from services import BondService, InvestmentService, YieldCalculator, UserService
 from auth import create_access_token, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES, set_user_service
+from database import init_db_instance
 
 load_dotenv()
 
 app = FastAPI(title="Bond Investment Platform API", version="1.0.0")
+
+# Initialize database
+init_db_instance()
 
 # CORS middleware for frontend access
 app.add_middleware(
@@ -104,15 +108,18 @@ async def root():
     }
 
 
-@app.post("/api/auth/register", response_model=Token)
+@app.post("/api/auth/register")
 async def register(user_data: UserRegister):
     """Register a new user"""
+    print(f"DEBUG: Register endpoint called with email={user_data.email}")
     try:
+        print(f"DEBUG: About to call create_user")
         user = user_service.create_user(
             email=user_data.email,
             username=user_data.username,
             password=user_data.password
         )
+        print(f"DEBUG: create_user returned: {user}")
         
         # Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -196,38 +203,48 @@ async def get_bond(bond_id: int):
 
 @app.post("/api/invest")
 async def record_investment(investment_data: Investment, current_user: User = Depends(get_current_user)):
-    """Record an investment transaction"""
+    """Record an investment transaction and persist it to the database."""
     try:
-        # Decode investment from JSON
         investment = investment_data
-        
+
         # Validate bond exists
         bond = bond_service.get_bond(investment.bondId)
         if not bond:
             raise HTTPException(status_code=404, detail="Bond not found")
-        
+
         # Validate minimum investment
         if investment.amount < bond.minimumInvestment:
             raise HTTPException(
                 status_code=400,
                 detail=f"Investment amount must be at least ${bond.minimumInvestment}"
             )
-        
-        # Record investment
-        investment_service.record_investment(investment)
-        
+
+        # Persist investment with associated user id
+        record = investment_service.record_investment(investment, user_id=current_user.id)
+
         return {
             "success": True,
             "message": "Investment recorded successfully",
-            "investment": investment.model_dump()
+            "investment": record
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/portfolio/{address}")
-async def get_portfolio(address: str):
-    """Get user portfolio with all investments"""
+async def get_portfolio(address: str, current_user: User = Depends(get_current_user)):
+    """Get user portfolio with all investments (PRIVATE - requires authentication)"""
+    # Verify that the user is only accessing their own portfolio
+    user_address = current_user.wallet_address or address
+    
+    if address.lower() != user_address.lower():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only access your own portfolio"
+        )
+    
     investments = investment_service.get_user_investments(address)
     
     # Calculate total value and yields
@@ -285,6 +302,91 @@ async def get_bond_stats(bond_id: int):
         "faceValue": bond.faceValue,
         "utilization": (total_invested / bond.faceValue * 100) if bond.faceValue > 0 else 0
     }
+
+
+@app.post("/api/bonds")
+async def create_bond(bond_data: Bond, current_user: User = Depends(get_current_user)):
+    """Create a new bond (admin only)"""
+    try:
+        # In production, add role-based access control here
+        # For now, allow any authenticated user
+        bond_service.add_bond(bond_data)
+        return {
+            "success": True,
+            "message": "Bond created successfully",
+            "bond": bond_data.model_dump()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/investments/user/{user_id}")
+async def get_user_investments_by_id(user_id: int, current_user: User = Depends(get_current_user)):
+    """Get all investments for a specific user"""
+    try:
+        investments = investment_service.db.get_user_investments(user_id) if investment_service.db else []
+        return {
+            "userId": user_id,
+            "investments": investments,
+            "totalInvested": sum(inv['amount'] for inv in investments)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/investments/stats")
+async def get_investment_statistics():
+    """Get overall investment platform statistics"""
+    try:
+        all_investments = investment_service.get_all_investments()
+        all_bonds = bond_service.get_all_bonds()
+        
+        total_invested = sum(inv.amount for inv in all_investments)
+        total_investors = len(set(inv.investorAddress for inv in all_investments))
+        
+        # Calculate bond-wise statistics
+        bond_stats = {}
+        for bond in all_bonds:
+            bond_invs = [inv for inv in all_investments if inv.bondId == bond.id]
+            bond_stats[bond.id] = {
+                "name": bond.name,
+                "totalInvested": sum(inv.amount for inv in bond_invs),
+                "investorCount": len(set(inv.investorAddress for inv in bond_invs)),
+                "investmentCount": len(bond_invs)
+            }
+        
+        return {
+            "totalInvested": total_invested,
+            "totalInvestors": total_investors,
+            "totalInvestments": len(all_investments),
+            "totalBonds": len(all_bonds),
+            "bondStats": bond_stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/investments/bond/{bond_id}")
+async def get_bond_investments(bond_id: int):
+    """Get all investments for a specific bond"""
+    try:
+        bond = bond_service.get_bond(bond_id)
+        if not bond:
+            raise HTTPException(status_code=404, detail="Bond not found")
+        
+        investments = investment_service.get_bond_investments(bond_id)
+        
+        return {
+            "bondId": bond_id,
+            "bondName": bond.name,
+            "investments": [inv.model_dump() for inv in investments],
+            "totalInvested": sum(inv.amount for inv in investments),
+            "investorCount": len(set(inv.investorAddress for inv in investments))
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

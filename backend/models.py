@@ -57,6 +57,7 @@ class User(BaseModel):
     email: str
     username: str
     hashed_password: str
+    wallet_address: Optional[str] = None  # User's connected wallet address
     created_at: Optional[str] = None
 
 

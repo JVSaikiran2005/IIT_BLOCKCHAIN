@@ -6,6 +6,7 @@ from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 from models import Bond, Investment, YieldCalculation, User
 from passlib.context import CryptContext
+from database import get_db
 
 
 class BondService:
@@ -31,24 +32,88 @@ class InvestmentService:
     """Service for managing investments"""
     
     def __init__(self):
+        # Use persistent database for investments when available
+        self.db = get_db()
         self.investments: List[Investment] = []
     
-    def record_investment(self, investment: Investment):
-        """Record an investment"""
+    def record_investment(self, investment: Investment, user_id: Optional[int] = None) -> dict:
+        """Record an investment. Persist to DB when possible.
+
+        If `user_id` is provided, the investment will be stored in the SQLite
+        database and the created DB record will be returned. Otherwise falls
+        back to in-memory storage for test/demo purposes.
+        """
         if investment.timestamp is None:
             investment.timestamp = datetime.now().isoformat()
+
+        if user_id is not None and self.db:
+            # Persist to DB
+            record = self.db.record_investment(
+                user_id=user_id,
+                bond_id=investment.bondId,
+                investor_address=investment.investorAddress,
+                amount=investment.amount,
+                timestamp=investment.timestamp,
+                transaction_hash=investment.transactionHash
+            )
+            return record
+
+        # Fallback: in-memory
         self.investments.append(investment)
+        return investment.model_dump()
     
     def get_user_investments(self, address: str) -> List[Investment]:
-        """Get all investments for a user address"""
+        """Get all investments for a user address (by wallet address)."""
+        results: List[Investment] = []
+        if self.db:
+            rows = self.db.get_investments_by_address(address)
+            for r in rows:
+                inv = Investment(
+                    bondId=r['bond_id'],
+                    investorAddress=r['investor_address'],
+                    amount=r['amount'],
+                    timestamp=r['timestamp'],
+                    transactionHash=r.get('transaction_hash')
+                )
+                results.append(inv)
+            return results
+
         return [inv for inv in self.investments if inv.investorAddress.lower() == address.lower()]
     
     def get_bond_investments(self, bond_id: int) -> List[Investment]:
         """Get all investments for a bond"""
+        results: List[Investment] = []
+        if self.db:
+            rows = self.db.get_bond_investments(bond_id)
+            for r in rows:
+                inv = Investment(
+                    bondId=r['bond_id'],
+                    investorAddress=r['investor_address'],
+                    amount=r['amount'],
+                    timestamp=r['timestamp'],
+                    transactionHash=r.get('transaction_hash')
+                )
+                results.append(inv)
+            return results
+
         return [inv for inv in self.investments if inv.bondId == bond_id]
     
     def get_all_investments(self) -> List[Investment]:
-        """Get all investments"""
+        """Get all investments (persisted when DB available)."""
+        results: List[Investment] = []
+        if self.db:
+            rows = self.db.get_all_investments()
+            for r in rows:
+                inv = Investment(
+                    bondId=r['bond_id'],
+                    investorAddress=r['investor_address'],
+                    amount=r['amount'],
+                    timestamp=r['timestamp'],
+                    transactionHash=r.get('transaction_hash')
+                )
+                results.append(inv)
+            return results
+
         return self.investments
 
 
@@ -103,57 +168,82 @@ class YieldCalculator:
 class UserService:
     """Service for managing users and authentication"""
     
+    # Bcrypt has a 72-byte password limit
+    MAX_PASSWORD_BYTES = 72
+    
     def __init__(self):
-        self.users: Dict[int, User] = {}
-        self.users_by_email: Dict[str, User] = {}
-        self.users_by_username: Dict[str, User] = {}
-        self.next_user_id = 1
+        self.db = get_db()
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     
+    def _truncate_password(self, password: str) -> str:
+        """Truncate password to 72 bytes (bcrypt limit)"""
+        # Truncate by characters as requested (e.g. my_password[:72]).
+        # This avoids passing passwords longer than the bcrypt 72-byte limit.
+        if password is None:
+            return password
+        return password[:self.MAX_PASSWORD_BYTES]
+    
     def hash_password(self, password: str) -> str:
-        """Hash a password"""
-        return self.pwd_context.hash(password)
+        """Hash a password (truncates to 72 bytes first)"""
+        truncated = self._truncate_password(password)
+        return self.pwd_context.hash(truncated)
     
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Verify a password against its hash"""
-        return self.pwd_context.verify(plain_password, hashed_password)
+        """Verify a password against its hash (truncates to 72 bytes first)"""
+        truncated = self._truncate_password(plain_password)
+        return self.pwd_context.verify(truncated, hashed_password)
     
     def create_user(self, email: str, username: str, password: str) -> User:
         """Create a new user"""
         # Check if email already exists
-        if email.lower() in self.users_by_email:
+        if self.db.get_user_by_email(email):
             raise ValueError("Email already registered")
         
         # Check if username already exists
-        if username.lower() in self.users_by_username:
+        if self.db.get_user_by_username(username):
             raise ValueError("Username already taken")
         
-        # Create user
-        user_id = self.next_user_id
-        self.next_user_id += 1
-        
+        # Hash password (automatically truncated to 72 bytes)
         hashed_password = self.hash_password(password)
-        user = User(
-            id=user_id,
-            email=email.lower(),
-            username=username,
+        
+        # Create user in database
+        user_data = self.db.create_user(email, username, hashed_password)
+        
+        return User(
+            id=user_data["id"],
+            email=user_data["email"],
+            username=user_data["username"],
             hashed_password=hashed_password,
-            created_at=datetime.now().isoformat()
+            created_at=user_data["created_at"]
         )
-        
-        self.users[user_id] = user
-        self.users_by_email[email.lower()] = user
-        self.users_by_username[username.lower()] = user
-        
-        return user
     
     def get_user_by_email(self, email: str) -> Optional[User]:
         """Get user by email"""
-        return self.users_by_email.get(email.lower())
+        user_data = self.db.get_user_by_email(email)
+        if not user_data:
+            return None
+        
+        return User(
+            id=user_data["id"],
+            email=user_data["email"],
+            username=user_data["username"],
+            hashed_password=user_data["hashed_password"],
+            created_at=user_data["created_at"]
+        )
     
     def get_user_by_id(self, user_id: int) -> Optional[User]:
         """Get user by ID"""
-        return self.users.get(user_id)
+        user_data = self.db.get_user_by_id(user_id)
+        if not user_data:
+            return None
+        
+        return User(
+            id=user_data["id"],
+            email=user_data["email"],
+            username=user_data["username"],
+            hashed_password=user_data["hashed_password"],
+            created_at=user_data["created_at"]
+        )
     
     def authenticate_user(self, email: str, password: str) -> Optional[User]:
         """Authenticate a user"""
@@ -165,5 +255,6 @@ class UserService:
             return None
         
         return user
+
 
 

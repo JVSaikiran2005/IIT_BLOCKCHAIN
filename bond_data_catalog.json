@@ -1,0 +1,140 @@
+{
+  "timestamp": "2026-01-11T18:31:28.131183",
+  "totalBonds": 11,
+  "existingBonds": [
+    {
+      "id": 0,
+      "name": "US Treasury 10-Year Bond",
+      "issuer": "United States Treasury",
+      "faceValue": 1000000.0,
+      "couponRate": 450.0,
+      "maturityDate": "2036-01-09T18:31:28.089483",
+      "issueDate": "2026-01-11T18:31:28.089483",
+      "description": "10-year US Treasury bond with semi-annual interest payments",
+      "minimumInvestment": 10.0,
+      "bondTokenAddress": "0x0000000000000000000000000000000000000000"
+    },
+    {
+      "id": 1,
+      "name": "UK Gilt 5-Year Bond",
+      "issuer": "UK Debt Management Office",
+      "faceValue": 500000.0,
+      "couponRate": 400.0,
+      "maturityDate": "2031-01-10T18:31:28.089483",
+      "issueDate": "2026-01-11T18:31:28.089483",
+      "description": "5-year UK government bond with quarterly interest payments",
+      "minimumInvestment": 20.0,
+      "bondTokenAddress": "0x0000000000000000000000000000000000000001"
+    },
+    {
+      "id": 2,
+      "name": "German Bund 3-Year Bond",
+      "issuer": "German Finance Agency",
+      "faceValue": 750000.0,
+      "couponRate": 350.0,
+      "maturityDate": "2029-01-10T18:31:28.089483",
+      "issueDate": "2026-01-11T18:31:28.089483",
+      "description": "3-year German government bond with annual interest payments",
+      "minimumInvestment": 15.0,
+      "bondTokenAddress": "0x0000000000000000000000000000000000000002"
+    }
+  ],
+  "additionalBonds": [
+    {
+      "id": 3,
+      "name": "Japanese Government Bond (JGB) 10-Year",
+      "issuer": "Ministry of Finance Japan",
+      "faceValue": 2000000,
+      "couponRate": 100,
+      "maturityDate": "2036-01-09T18:31:28.115596",
+      "issueDate": "2026-01-11T18:31:28.116587",
+      "description": "10-year Japanese government bond with semi-annual interest payments",
+      "minimumInvestment": 50,
+      "bondTokenAddress": "0x0000000000000000000000000000000000000003"
+    },
+    {
+      "id": 4,
+      "name": "Australian Government Bond (AGB) 7-Year",
+      "issuer": "Australian Office of Financial Management",
+      "faceValue": 1500000,
+      "couponRate": 380,
+      "maturityDate": "2033-01-09T18:31:28.116587",
+      "issueDate": "2026-01-11T18:31:28.116587",
+      "description": "7-year Australian government bond with annual interest payments",
+      "minimumInvestment": 25,
+      "bondTokenAddress": "0x0000000000000000000000000000000000000004"
+    },
+    {
+      "id": 5,
+      "name": "Canadian Government Bond (CGB) 5-Year",
+      "issuer": "Department of Finance Canada",
+      "faceValue": 1200000,
+      "couponRate": 420,
+      "maturityDate": "2031-01-10T18:31:28.116587",
+      "issueDate": "2026-01-11T18:31:28.116587",
+      "description": "5-year Canadian government bond with semi-annual interest payments",
+      "minimumInvestment": 18,
+      "bondTokenAddress": "0x0000000000000000000000000000000000000005"
+    },
+    {
+      "id": 6,
+      "name": "Singapore Government Securities (SGS) 3-Year",
+      "issuer": "Monetary Authority of Singapore",
+      "faceValue": 500000,
+      "couponRate": 290,
+      "maturityDate": "2029-01-10T18:31:28.116587",
+      "issueDate": "2026-01-11T18:31:28.116587",
+      "description": "3-year Singapore government security with annual interest payments",
+      "minimumInvestment": 12,
+      "bondTokenAddress": "0x0000000000000000000000000000000000000006"
+    },
+    {
+      "id": 7,
+      "name": "Swiss Federal Bonds (Conf) 15-Year",
+      "issuer": "Swiss Federal Finance Administration",
+      "faceValue": 3000000,
+      "couponRate": 180,
+      "maturityDate": "2041-01-07T18:31:28.116587",
+      "issueDate": "2026-01-11T18:31:28.116587",
+      "description": "15-year Swiss federal bond with annual interest payments. Highly rated AAA",
+      "minimumInvestment": 30,
+      "bondTokenAddress": "0x0000000000000000000000000000000000000007"
+    },
+    {
+      "id": 8,
+      "name": "Corporate Green Bond - Tech Finance Corp",
+      "issuer": "Tech Finance Corp (AAA Rated)",
+      "faceValue": 500000,
+      "couponRate": 550,
+      "maturityDate": "2031-01-10T18:31:28.116587",
+      "issueDate": "2026-01-11T18:31:28.116587",
+      "description": "5-year corporate green bond financing renewable energy projects. ESG compliant.",
+      "minimumInvestment": 100,
+      "bondTokenAddress": "0x0000000000000000000000000000000000000008"
+    },
+    {
+      "id": 9,
+      "name": "Emerging Market Bond - Brazil Development Bank",
+      "issuer": "Brazilian Development Bank (BNDES)",
+      "faceValue": 800000,
+      "couponRate": 650,
+      "maturityDate": "2030-01-10T18:31:28.116587",
+      "issueDate": "2026-01-11T18:31:28.116587",
+      "description": "4-year emerging market bond from leading Brazilian development institution. Higher risk, higher yield.",
+      "minimumInvestment": 200,
+      "bondTokenAddress": "0x0000000000000000000000000000000000000009"
+    },
+    {
+      "id": 10,
+      "name": "Inflation-Linked Bond (TIPS) - US Treasury",
+      "issuer": "United States Treasury",
+      "faceValue": 1000000,
+      "couponRate": 200,
+      "maturityDate": "2032-01-10T18:31:28.116587",
+      "issueDate": "2026-01-11T18:31:28.116587",
+      "description": "6-year US Treasury Inflation-Protected Security. Principal adjusts with CPI. Protection against inflation.",
+      "minimumInvestment": 25,
+      "bondTokenAddress": "0x000000000000000000000000000000000000000A"
+    }
+  ]
+}
