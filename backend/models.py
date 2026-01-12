@@ -28,6 +28,8 @@ class Investment(BaseModel):
     amount: float
     timestamp: Optional[str] = None
     transactionHash: Optional[str] = None
+    user_id: Optional[int] = None
+    id: Optional[int] = None
 
 
 class Portfolio(BaseModel):
@@ -80,4 +82,76 @@ class Token(BaseModel):
     token_type: str
     user_id: int
     username: str
+
+
+class AdminUser(BaseModel):
+    """Admin user model"""
+    id: int
+    email: str
+    username: str
+    is_admin: bool = True
+    created_at: Optional[str] = None
+
+
+class AdminLogin(BaseModel):
+    """Admin login model"""
+    email: str
+    password: str
+
+
+class BondUpdate(BaseModel):
+    """Bond update model for admin"""
+    name: Optional[str] = None
+    issuer: Optional[str] = None
+    faceValue: Optional[float] = None
+    couponRate: Optional[float] = None
+    maturityDate: Optional[str] = None
+    issueDate: Optional[str] = None
+    description: Optional[str] = None
+    minimumInvestment: Optional[float] = None
+    bondTokenAddress: Optional[str] = None
+
+
+class PaymentAccess(BaseModel):
+    """Payment access model"""
+    user_id: int
+    username: str
+    email: str
+    wallet_address: Optional[str] = None
+    access_level: str  # 'full', 'limited', 'blocked'
+    can_invest: bool
+    can_withdraw: bool
+    can_transfer: bool
+    payment_status: str  # 'active', 'suspended', 'blocked'
+    created_at: Optional[str] = None
+
+
+class TransactionHistory(BaseModel):
+    """Transaction history model"""
+    id: Optional[int] = None
+    user_id: int
+    type: str  # 'investment', 'withdrawal', 'transfer', 'interest_payment'
+    bond_id: Optional[int] = None
+    amount: float
+    status: str  # 'pending', 'completed', 'failed'
+    timestamp: Optional[str] = None
+    transaction_hash: Optional[str] = None
+    description: Optional[str] = None
+
+
+class TransactionBill(BaseModel):
+    """Transaction bill/receipt model"""
+    id: Optional[int] = None
+    transaction_id: Optional[int] = None
+    user_id: int
+    username: str
+    email: str
+    bond_name: Optional[str] = None
+    amount: float
+    transaction_type: str
+    status: str
+    timestamp: Optional[str] = None
+    tax_amount: float = 0.0
+    fee_amount: float = 0.0
+    net_amount: Optional[float] = None
 

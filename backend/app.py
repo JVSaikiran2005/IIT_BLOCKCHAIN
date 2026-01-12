@@ -13,9 +13,10 @@ import json
 import os
 from dotenv import load_dotenv
 
-from models import Bond, Investment, Portfolio, YieldCalculation, UserRegister, UserLogin, Token, User
+from models import Bond, Investment, Portfolio, YieldCalculation, UserRegister, UserLogin, Token, User, BondUpdate
 from services import BondService, InvestmentService, YieldCalculator, UserService
 from auth import create_access_token, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES, set_user_service
+from admin_auth import create_admin_access_token, get_current_admin, authenticate_admin, ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES
 from database import init_db_instance
 
 load_dotenv()
@@ -233,26 +234,18 @@ async def record_investment(investment_data: Investment, current_user: User = De
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/portfolio/{address}")
-async def get_portfolio(address: str, current_user: User = Depends(get_current_user)):
+@app.get("/api/portfolio")
+async def get_portfolio(current_user: User = Depends(get_current_user)):
     """Get user portfolio with all investments (PRIVATE - requires authentication)"""
-    # Verify that the user is only accessing their own portfolio
-    user_address = current_user.wallet_address or address
-    
-    if address.lower() != user_address.lower():
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only access your own portfolio"
-        )
-    
-    investments = investment_service.get_user_investments(address)
+    # Get investments for the current user by user ID
+    investments = investment_service.get_user_investments_by_id(current_user.id)
     
     # Calculate total value and yields
     total_invested = sum(inv.amount for inv in investments)
     total_value = total_invested  # Simplified - in production, calculate current market value
     
     portfolio = Portfolio(
-        address=address,
+        address=current_user.wallet_address or "wallet_not_connected",
         investments=investments,
         totalInvested=total_invested,
         totalValue=total_value,
@@ -382,6 +375,447 @@ async def get_bond_investments(bond_id: int):
             "investments": [inv.model_dump() for inv in investments],
             "totalInvested": sum(inv.amount for inv in investments),
             "investorCount": len(set(inv.investorAddress for inv in investments))
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =======================
+# ADMIN ENDPOINTS
+# =======================
+
+@app.post("/api/admin/login")
+async def admin_login(admin_data: UserLogin):
+    """Admin login endpoint"""
+    admin = authenticate_admin(admin_data.email, admin_data.password)
+    
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Create access token
+    access_token_expires = timedelta(minutes=ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_admin_access_token(
+        data={"sub": admin["email"], "user_id": admin["user_id"], "username": admin["username"]},
+        expires_delta=access_token_expires
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": admin["user_id"],
+        "username": admin["username"],
+        "email": admin["email"]
+    }
+
+
+@app.get("/api/admin/users")
+async def get_all_users_with_investments(admin: dict = Depends(get_current_admin)):
+    """Get all users and their investments (admin only)"""
+    try:
+        # Get all users
+        all_investments = investment_service.get_all_investments()
+        all_bonds = bond_service.get_all_bonds()
+        
+        # Group investments by user_id
+        users_dict = {}
+        
+        if investment_service.db:
+            # Get users from database
+            users_data = investment_service.db.get_all_users()
+            for user_row in users_data:
+                user_id = user_row['id']
+                users_dict[user_id] = {
+                    "id": user_id,
+                    "email": user_row['email'],
+                    "username": user_row['username'],
+                    "created_at": user_row['created_at'],
+                    "investments": []
+                }
+        
+        # Add investments to users
+        for inv in all_investments:
+            user_id = inv.user_id if hasattr(inv, 'user_id') else None
+            if user_id and user_id in users_dict:
+                users_dict[user_id]["investments"].append({
+                    "id": inv.id if hasattr(inv, 'id') else None,
+                    "bond_id": inv.bondId,
+                    "amount": inv.amount,
+                    "timestamp": inv.timestamp,
+                    "investor_address": inv.investorAddress
+                })
+        
+        # Calculate statistics
+        total_invested = sum(inv.amount for inv in all_investments)
+        total_investments = len(all_investments)
+        total_users = len(users_dict)
+        
+        return {
+            "users": list(users_dict.values()),
+            "total_users": total_users,
+            "total_investments": total_investments,
+            "total_invested": total_invested,
+            "total_bonds": len(all_bonds)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/user/{user_id}")
+async def get_user_investments_admin(user_id: int, admin: dict = Depends(get_current_admin)):
+    """Get detailed investments for a specific user (admin only)"""
+    try:
+        if investment_service.db:
+            user_data = investment_service.db.get_user_by_id(user_id)
+            if not user_data:
+                raise HTTPException(status_code=404, detail="User not found")
+            
+            investments = investment_service.get_user_investments_by_id(user_id)
+            
+            return {
+                "user": {
+                    "id": user_data['id'],
+                    "email": user_data['email'],
+                    "username": user_data['username'],
+                    "created_at": user_data['created_at']
+                },
+                "investments": [
+                    {
+                        "bond_id": inv.bondId,
+                        "amount": inv.amount,
+                        "timestamp": inv.timestamp,
+                        "investor_address": inv.investorAddress
+                    }
+                    for inv in investments
+                ],
+                "total_invested": sum(inv.amount for inv in investments),
+                "investment_count": len(investments)
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Database not available")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =======================
+# ADMIN BOND MANAGEMENT
+# =======================
+
+@app.post("/api/admin/bonds")
+async def admin_create_bond(bond_data: Bond, admin: dict = Depends(get_current_admin)):
+    """Create a new government bond (admin only)"""
+    try:
+        bond_service.add_bond(bond_data)
+        return {
+            "success": True,
+            "message": "Bond created successfully",
+            "bond": bond_data.model_dump()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/bonds")
+async def admin_get_all_bonds(admin: dict = Depends(get_current_admin)):
+    """Get all bonds (admin view)"""
+    try:
+        bonds = bond_service.get_all_bonds()
+        return {
+            "total_bonds": len(bonds),
+            "bonds": [bond.model_dump() for bond in bonds]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/bonds/{bond_id}")
+async def admin_get_bond(bond_id: int, admin: dict = Depends(get_current_admin)):
+    """Get specific bond details (admin view)"""
+    try:
+        bond = bond_service.get_bond(bond_id)
+        if not bond:
+            raise HTTPException(status_code=404, detail="Bond not found")
+        
+        # Get investment stats for this bond
+        all_investments = investment_service.get_all_investments()
+        bond_investments = [inv for inv in all_investments if inv.bondId == bond_id]
+        
+        return {
+            "bond": bond.model_dump(),
+            "total_invested": sum(inv.amount for inv in bond_investments),
+            "investor_count": len(set(inv.investorAddress for inv in bond_investments)),
+            "investment_count": len(bond_investments)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/admin/bonds/{bond_id}")
+async def admin_update_bond(bond_id: int, bond_update: BondUpdate, admin: dict = Depends(get_current_admin)):
+    """Update bond details (admin only)"""
+    try:
+        bond = bond_service.get_bond(bond_id)
+        if not bond:
+            raise HTTPException(status_code=404, detail="Bond not found")
+        
+        # Update bond fields
+        update_data = bond_update.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            if value is not None:
+                setattr(bond, key, value)
+        
+        bond_service.bonds[bond_id] = bond
+        
+        return {
+            "success": True,
+            "message": f"Bond {bond_id} updated successfully",
+            "bond": bond.model_dump()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/admin/bonds/{bond_id}")
+async def admin_delete_bond(bond_id: int, admin: dict = Depends(get_current_admin)):
+    """Delete a bond (admin only)"""
+    try:
+        bond = bond_service.get_bond(bond_id)
+        if not bond:
+            raise HTTPException(status_code=404, detail="Bond not found")
+        
+        del bond_service.bonds[bond_id]
+        
+        return {
+            "success": True,
+            "message": f"Bond {bond_id} deleted successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =======================
+# ADMIN USER MANAGEMENT & PAYMENT ACCESS
+# =======================
+
+@app.get("/api/admin/users/full")
+async def admin_get_all_users_full(admin: dict = Depends(get_current_admin)):
+    """Get all users with full details including credentials (admin only)"""
+    try:
+        users_data = investment_service.db.get_all_users() if investment_service.db else []
+        
+        result = []
+        for user_row in users_data:
+            user_id = user_row['id']
+            
+            # Get payment access
+            payment_access = investment_service.db.get_payment_access(user_id) if investment_service.db else None
+            
+            # Get transactions
+            transactions = investment_service.db.get_user_transactions(user_id) if investment_service.db else []
+            
+            # Get bills
+            bills = investment_service.db.get_user_bills(user_id) if investment_service.db else []
+            
+            # Get investments
+            investments = investment_service.get_user_investments_by_id(user_id)
+            
+            result.append({
+                "id": user_id,
+                "email": user_row['email'],
+                "username": user_row['username'],
+                "hashed_password": user_row['hashed_password'],
+                "created_at": user_row['created_at'],
+                "payment_access": payment_access or {"status": "not_configured"},
+                "transaction_count": len(transactions),
+                "bill_count": len(bills),
+                "investment_count": len(investments),
+                "total_invested": sum(inv.amount for inv in investments),
+                "login_credentials": {
+                    "email": user_row['email'],
+                    "username": user_row['username'],
+                    "password_hash": user_row['hashed_password']
+                }
+            })
+        
+        return {
+            "total_users": len(result),
+            "users": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/payment-access")
+async def admin_get_all_payment_access(admin: dict = Depends(get_current_admin)):
+    """Get payment access for all users (admin only)"""
+    try:
+        payment_access_list = investment_service.db.get_all_payment_access() if investment_service.db else []
+        
+        return {
+            "total_records": len(payment_access_list),
+            "payment_access": payment_access_list
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/admin/payment-access/{user_id}")
+async def admin_update_payment_access(user_id: int, access_update: dict, admin: dict = Depends(get_current_admin)):
+    """Update user's payment access (admin only)"""
+    try:
+        if not investment_service.db:
+            raise HTTPException(status_code=500, detail="Database not available")
+        
+        # Verify user exists
+        user = investment_service.db.get_user_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check if payment access exists, create if not
+        payment_access = investment_service.db.get_payment_access(user_id)
+        if not payment_access:
+            investment_service.db.create_payment_access(user_id)
+        
+        # Update payment access
+        updated = investment_service.db.update_payment_access(user_id, **access_update)
+        
+        return {
+            "success": True,
+            "message": f"Payment access for user {user_id} updated successfully",
+            "payment_access": updated
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =======================
+# ADMIN TRANSACTION MANAGEMENT
+# =======================
+
+@app.get("/api/admin/transactions")
+async def admin_get_all_transactions(admin: dict = Depends(get_current_admin)):
+    """Get all transactions (admin only)"""
+    try:
+        transactions = investment_service.db.get_all_transactions() if investment_service.db else []
+        
+        # Group by status
+        by_status = {}
+        for trans in transactions:
+            status = trans['status']
+            if status not in by_status:
+                by_status[status] = []
+            by_status[status].append(trans)
+        
+        return {
+            "total_transactions": len(transactions),
+            "by_status": by_status,
+            "transactions": transactions
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/transactions/{user_id}")
+async def admin_get_user_transactions(user_id: int, admin: dict = Depends(get_current_admin)):
+    """Get transactions for specific user (admin only)"""
+    try:
+        if not investment_service.db:
+            raise HTTPException(status_code=500, detail="Database not available")
+        
+        user = investment_service.db.get_user_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        transactions = investment_service.db.get_user_transactions(user_id)
+        
+        return {
+            "user_id": user_id,
+            "username": user['username'],
+            "email": user['email'],
+            "total_transactions": len(transactions),
+            "transactions": transactions
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =======================
+# ADMIN BILLS MANAGEMENT
+# =======================
+
+@app.get("/api/admin/bills")
+async def admin_get_all_bills(admin: dict = Depends(get_current_admin)):
+    """Get all transaction bills (admin only)"""
+    try:
+        bills = investment_service.db.get_all_bills() if investment_service.db else []
+        
+        # Calculate totals
+        total_amount = sum(bill['amount'] for bill in bills)
+        total_tax = sum(bill['tax_amount'] for bill in bills)
+        total_fee = sum(bill['fee_amount'] for bill in bills)
+        total_net = sum(bill['net_amount'] for bill in bills)
+        
+        return {
+            "total_bills": len(bills),
+            "summary": {
+                "total_amount": total_amount,
+                "total_tax": total_tax,
+                "total_fee": total_fee,
+                "total_net": total_net
+            },
+            "bills": bills
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/bills/{user_id}")
+async def admin_get_user_bills(user_id: int, admin: dict = Depends(get_current_admin)):
+    """Get bills for specific user (admin only)"""
+    try:
+        if not investment_service.db:
+            raise HTTPException(status_code=500, detail="Database not available")
+        
+        user = investment_service.db.get_user_by_id(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        bills = investment_service.db.get_user_bills(user_id)
+        
+        total_amount = sum(bill['amount'] for bill in bills)
+        total_tax = sum(bill['tax_amount'] for bill in bills)
+        total_fee = sum(bill['fee_amount'] for bill in bills)
+        total_net = sum(bill['net_amount'] for bill in bills)
+        
+        return {
+            "user_id": user_id,
+            "username": user['username'],
+            "email": user['email'],
+            "total_bills": len(bills),
+            "summary": {
+                "total_amount": total_amount,
+                "total_tax": total_tax,
+                "total_fee": total_fee,
+                "total_net": total_net
+            },
+            "bills": bills
         }
     except HTTPException:
         raise

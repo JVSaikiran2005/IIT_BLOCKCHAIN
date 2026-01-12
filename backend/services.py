@@ -80,6 +80,26 @@ class InvestmentService:
 
         return [inv for inv in self.investments if inv.investorAddress.lower() == address.lower()]
     
+    def get_user_investments_by_id(self, user_id: int) -> List[Investment]:
+        """Get all investments for a specific user by user ID."""
+        results: List[Investment] = []
+        if self.db:
+            rows = self.db.get_investments_by_user_id(user_id)
+            for r in rows:
+                inv = Investment(
+                    id=r.get('id'),
+                    bondId=r['bond_id'],
+                    investorAddress=r['investor_address'],
+                    amount=r['amount'],
+                    timestamp=r['timestamp'],
+                    transactionHash=r.get('transaction_hash'),
+                    user_id=r.get('user_id')
+                )
+                results.append(inv)
+            return results
+
+        return []
+    
     def get_bond_investments(self, bond_id: int) -> List[Investment]:
         """Get all investments for a bond"""
         results: List[Investment] = []
@@ -105,11 +125,13 @@ class InvestmentService:
             rows = self.db.get_all_investments()
             for r in rows:
                 inv = Investment(
+                    id=r.get('id'),
                     bondId=r['bond_id'],
                     investorAddress=r['investor_address'],
                     amount=r['amount'],
                     timestamp=r['timestamp'],
-                    transactionHash=r.get('transaction_hash')
+                    transactionHash=r.get('transaction_hash'),
+                    user_id=r.get('user_id')
                 )
                 results.append(inv)
             return results

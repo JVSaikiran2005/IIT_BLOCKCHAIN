@@ -356,36 +356,52 @@ function logout() {
     localStorage.removeItem('authToken');
     updateAuthUI(false);
     walletManager?.disconnect?.();
-    alert('Logged out');
-    location.reload();
+    closeAllModals();
+    alert('Logged out successfully');
+    // Scroll to top to show login interface
+    window.scrollTo(0, 0);
 }
 
 function updateAuthUI(isLoggedIn) {
     const authSection = document.getElementById('authSection');
     const loginSection = document.getElementById('loginSection');
+    const heroSection = document.getElementById('heroSection');
+    const bondsSection = document.getElementById('bonds');
+    const statisticsSection = document.getElementById('statistics');
+    const portfolioSection = document.getElementById('portfolio');
     
-    if (authSection) authSection.style.display = isLoggedIn ? 'flex' : 'none';
-    if (loginSection) loginSection.style.display = isLoggedIn ? 'none' : 'flex';
+    if (isLoggedIn) {
+        // Show authenticated user sections
+        if (authSection) authSection.style.display = 'flex';
+        if (loginSection) loginSection.style.display = 'none';
+        if (heroSection) heroSection.style.display = 'block';
+        if (bondsSection) bondsSection.style.display = 'block';
+        if (statisticsSection) statisticsSection.style.display = 'block';
+        if (portfolioSection) portfolioSection.style.display = 'block';
+    } else {
+        // Show login/register options
+        // Bonds and statistics are PUBLIC - always visible
+        if (authSection) authSection.style.display = 'none';
+        if (loginSection) loginSection.style.display = 'flex';
+        if (heroSection) heroSection.style.display = 'block';
+        if (bondsSection) bondsSection.style.display = 'block';
+        if (statisticsSection) statisticsSection.style.display = 'block';
+        if (portfolioSection) portfolioSection.style.display = 'none';
+    }
 }
 
 // ====================
 // Portfolio (PRIVATE - Requires Auth)
 // ====================
 async function loadUserPortfolio() {
-    // Only load portfolio if user is authenticated AND wallet is connected
+    // Only load portfolio if user is authenticated
     if (!authToken) {
         showPortfolioMessage('Please log in to view your portfolio', true);
         return;
     }
     
-    if (!walletManager?.getAddress?.()) {
-        showPortfolioMessage('Please connect your wallet to view your portfolio', true);
-        return;
-    }
-    
     try {
-        const address = walletManager.getAddress();
-        const response = await fetch(`${API_URL}/portfolio/${address}`, {
+        const response = await fetch(`${API_URL}/portfolio`, {
             headers: {
                 'Authorization': `Bearer ${authToken}`
             }
@@ -660,6 +676,13 @@ function showModal(modalId) {
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.style.display = 'none';
+}
+
+function closeAllModals() {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.style.display = 'none';
+    });
 }
 
 function showError(message) {

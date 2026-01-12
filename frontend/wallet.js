@@ -51,12 +51,15 @@ class WalletManager {
     async connect() {
         try {
             // Require user to be logged in before allowing wallet connection
-            if (window.authManager && typeof window.authManager.isAuthenticated === 'function') {
-                if (!window.authManager.isAuthenticated()) {
-                    alert('Please log in to connect your wallet');
-                    if (typeof openModal === 'function') openModal('loginModal');
-                    return null;
+            const authToken = localStorage.getItem('authToken');
+            if (!authToken || authToken === 'null') {
+                alert('Please log in first to connect your wallet');
+                if (typeof showModal === 'function') {
+                    showModal('loginModal');
+                } else {
+                    window.location.hash = '#login';
                 }
+                return null;
             }
 
             if (this.hasMetaMask) {

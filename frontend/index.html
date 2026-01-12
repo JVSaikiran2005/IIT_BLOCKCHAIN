@@ -16,6 +16,7 @@
                     <a href="#bonds" class="nav-link">Bonds</a>
                     <a href="#statistics" class="nav-link">Statistics</a>
                     <a href="#portfolio" class="nav-link">Portfolio</a>
+                    <a href="#admin" class="nav-link" id="adminNavLink" style="display: none;">Admin</a>
                 </nav>
                 <div class="wallet-section">
                     <div id="authSection" style="display: none;">
@@ -25,6 +26,7 @@
                     <div id="loginSection">
                         <button id="loginBtn" class="btn btn-secondary">Login</button>
                         <button id="registerBtn" class="btn btn-primary">Register</button>
+                        <button id="adminLoginBtn" class="btn btn-warning">Admin</button>
                     </div>
                     <button id="connectWalletBtn" class="btn btn-primary">Connect Wallet</button>
                     <div id="walletInfo" style="display: none;">
@@ -98,7 +100,7 @@
         </section>
 
         <!-- Portfolio Section -->
-        <section id="portfolio" class="section">
+        <section id="portfolio" class="section" style="display: none;">
             <div class="container">
                 <h2 class="section-title">My Portfolio</h2>
                 <div class="portfolio-container">
@@ -115,6 +117,51 @@
                     <div id="portfolioInvestments" class="portfolio-investments">
                         <p class="empty-state">Connect wallet to view portfolio</p>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Admin Dashboard Section -->
+        <section id="admin" class="section" style="display: none;">
+            <div class="container">
+                <h2 class="section-title">🛡️ Admin Control Panel</h2>
+                <div class="admin-header">
+                    <span id="adminUserInfo" class="admin-user-info"></span>
+                    <button id="adminLogoutBtn" class="btn btn-danger btn-small">Logout</button>
+                </div>
+                
+                <!-- Admin Tabs Navigation -->
+                <div class="admin-tabs">
+                    <button class="admin-tab-btn active" data-tab="users">Users</button>
+                    <button class="admin-tab-btn" data-tab="bonds">Bonds</button>
+                    <button class="admin-tab-btn" data-tab="payments">Payments</button>
+                    <button class="admin-tab-btn" data-tab="transactions">Transactions</button>
+                    <button class="admin-tab-btn" data-tab="bills">Bills</button>
+                </div>
+
+                <!-- Users Tab -->
+                <div id="admin-users" class="admin-tab-content" style="display: block;">
+                    <p class="empty-state">Loading users...</p>
+                </div>
+
+                <!-- Bonds Tab -->
+                <div id="admin-bonds" class="admin-tab-content" style="display: none;">
+                    <p class="empty-state">Loading bonds...</p>
+                </div>
+
+                <!-- Payment Access Tab -->
+                <div id="admin-payments" class="admin-tab-content" style="display: none;">
+                    <p class="empty-state">Loading payment access...</p>
+                </div>
+
+                <!-- Transactions Tab -->
+                <div id="admin-transactions" class="admin-tab-content" style="display: none;">
+                    <p class="empty-state">Loading transactions...</p>
+                </div>
+
+                <!-- Bills Tab -->
+                <div id="admin-bills" class="admin-tab-content" style="display: none;">
+                    <p class="empty-state">Loading bills...</p>
                 </div>
             </div>
         </section>
@@ -237,9 +284,30 @@
         </div>
     </div>
 
+    <!-- Admin Login Modal -->
+    <div id="adminLoginModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Admin Login</h2>
+            <form id="adminLoginForm">
+                <div class="form-group">
+                    <label for="adminEmail">Admin Email</label>
+                    <input type="email" id="adminEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="adminPassword">Admin Password</label>
+                    <input type="password" id="adminPassword" required>
+                </div>
+                <div id="adminLoginError" class="error-message" style="display: none;"></div>
+                <button type="submit" class="btn btn-primary btn-block">Login as Admin</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="wallet.js"></script>
+    <script src="admin.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
